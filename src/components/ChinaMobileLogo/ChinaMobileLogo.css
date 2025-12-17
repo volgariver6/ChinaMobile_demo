@@ -1,0 +1,16 @@
+.china-mobile-logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  transition: opacity var(--transition-normal);
+}
+
+/* Hover effect */
+.china-mobile-logo:hover .logo-img {
+  opacity: 0.85;
+}
