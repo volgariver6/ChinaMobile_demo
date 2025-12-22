@@ -104,18 +104,23 @@ async def query_historical_performance(request: QueryHistoricalPerformanceReques
     从 xunyuan_agent.bidding_records_1 表中查询供应商历史表现数据
     """
     try:
+        logger.info(f"收到历史表现查询请求: item_name='{request.item_name}', has_embedding={request.embedding is not None}")
+
         client = get_moi_client()
 
         # 优先使用向量查询
         if request.embedding:
+            logger.info(f"检测到embedding字段，长度: {len(request.embedding)}，开始执行向量查询")
             try:
                 vector_str = "[" + ",".join(map(str, request.embedding)) + "]"
+                logger.debug(f"向量字符串: {vector_str[:100]}...")
 
                 # 同时查询两个向量字段，取最好的结果
                 vector_results = []
 
                 # 查询项目名称向量
                 try:
+                    logger.info("开始执行项目名称向量查询")
                     project_sql = f"""
 SELECT
     t.`供应商名称`,
@@ -144,13 +149,18 @@ LIMIT 10;
                     """.strip()
 
                     project_result = await client.run_sql(project_sql)
+                    logger.info(f"项目名称向量查询完成，结果行数: {len(project_result.get('rows', []))}")
                     if project_result.get("rows") and len(project_result["rows"]) > 0:
                         vector_results.append(("project", project_result))
+                        logger.info(f"项目名称向量查询成功，添加到结果列表")
+                    else:
+                        logger.warning("项目名称向量查询返回空结果")
                 except Exception as e:
                     logger.warning(f"项目名称向量查询失败: {e}")
 
                 # 查询产品向量
                 try:
+                    logger.info("开始执行产品向量查询")
                     product_sql = f"""
 SELECT
     t.`供应商名称`,
@@ -179,27 +189,41 @@ LIMIT 10;
                     """.strip()
 
                     product_result = await client.run_sql(product_sql)
+                    logger.info(f"产品向量查询完成，结果行数: {len(product_result.get('rows', []))}")
                     if product_result.get("rows") and len(product_result["rows"]) > 0:
                         vector_results.append(("product", product_result))
+                        logger.info(f"产品向量查询成功，添加到结果列表")
+                    else:
+                        logger.warning("产品向量查询返回空结果")
                 except Exception as e:
                     logger.warning(f"产品向量查询失败: {e}")
 
                 # 如果有向量查询结果，选择最好的一个返回
+                logger.info(f"向量查询统计: 成功查询数 {len(vector_results)}，详情: {[(name, len(result.get('rows', []))) for name, result in vector_results]}")
+
                 if vector_results:
                     # 优先选择结果更多的查询
                     best_result = max(vector_results, key=lambda x: len(x[1]["rows"]))
-                    logger.info(f"使用 {best_result[0]} 向量查询，返回 {len(best_result[1]['rows'])} 条结果")
+                    logger.info(f"向量查询成功: 选择 {best_result[0]} 向量查询，返回 {len(best_result[1]['rows'])} 条结果")
                     return SQLQueryResponse(
                         columns=best_result[1].get("columns", []),
                         rows=best_result[1].get("rows", []),
                         error=best_result[1].get("error")
                     )
+
+                logger.warning("所有向量查询均无结果，将退化到LIKE查询。可能原因: 1)向量数据不存在 2)相似度阈值过高 3)数据库中无匹配记录")
             except Exception as e:
-                logger.warning(f"向量查询整体失败，将使用LIKE查询: {e}")
+                logger.error(f"向量查询整体失败，将退化到LIKE查询。异常信息: {str(e)}", exc_info=True)
                 # 继续执行LIKE查询，不抛出异常
 
         # 向量查询无结果、失败或未提供向量，使用 LIKE 查询作为退化方案
+        if not request.embedding:
+            logger.info("未提供embedding参数，直接使用LIKE查询")
+        else:
+            logger.info("向量查询无结果或失败，开始执行LIKE查询作为退化方案")
+
         escaped_item = request.item_name.replace("'", "''")
+        logger.debug(f"LIKE查询关键词: '{escaped_item}'")
 
         fallback_sql = f"""
 SELECT
@@ -256,18 +280,24 @@ async def query_secondary_price(request: QuerySecondaryPriceRequest) -> SQLQuery
     从 xunyuan_agent.product_price 表中查询价格数据
     """
     try:
+        logger.info(f"收到二采价格查询请求: item_name='{request.item_name}', has_embedding={request.embedding is not None}")
+
         client = get_moi_client()
 
         # 优先使用向量查询
         if request.embedding:
-            vector_str = "[" + ",".join(map(str, request.embedding)) + "]"
-
-            # 同时查询两个向量字段，取最好的结果
-            vector_results = []
-
-            # 查询项目名称向量
+            logger.info(f"检测到embedding字段，长度: {len(request.embedding)}，开始执行向量查询")
             try:
-                project_sql = f"""
+                vector_str = "[" + ",".join(map(str, request.embedding)) + "]"
+                logger.debug(f"向量字符串: {vector_str[:100]}...")
+
+                # 同时查询两个向量字段，取最好的结果
+                vector_results = []
+
+                # 查询项目名称向量
+                try:
+                    logger.info("开始执行项目名称向量查询 (二采价格)")
+                    project_sql = f"""
 SELECT
     `项目名称`,
     `物料短描述`,
@@ -279,17 +309,22 @@ SELECT
 FROM `xunyuan_agent`.`product_price`
 ORDER BY similarity_score ASC
 LIMIT 3;
-                """.strip()
+                    """.strip()
 
-                project_result = await client.run_sql(project_sql)
-                if project_result.get("rows") and len(project_result["rows"]) > 0:
-                    vector_results.append(("project", project_result))
-            except Exception as e:
-                logger.warning(f"项目名称向量查询失败: {e}")
+                    project_result = await client.run_sql(project_sql)
+                    logger.info(f"项目名称向量查询完成 (二采价格)，结果行数: {len(project_result.get('rows', []))}")
+                    if project_result.get("rows") and len(project_result["rows"]) > 0:
+                        vector_results.append(("project", project_result))
+                        logger.info(f"项目名称向量查询成功 (二采价格)，添加到结果列表")
+                    else:
+                        logger.warning("项目名称向量查询返回空结果 (二采价格)")
+                except Exception as e:
+                    logger.warning(f"项目名称向量查询失败 (二采价格): {e}")
 
-            # 查询产品向量（物料短描述）
-            try:
-                product_sql = f"""
+                # 查询产品向量（物料短描述）
+                try:
+                    logger.info("开始执行产品向量查询 (二采价格)")
+                    product_sql = f"""
 SELECT
     `项目名称`,
     `物料短描述`,
@@ -301,26 +336,41 @@ SELECT
 FROM `xunyuan_agent`.`product_price`
 ORDER BY similarity_score ASC
 LIMIT 3;
-                """.strip()
+                    """.strip()
 
-                product_result = await client.run_sql(product_sql)
-                if product_result.get("rows") and len(product_result["rows"]) > 0:
-                    vector_results.append(("product", product_result))
+                    product_result = await client.run_sql(product_sql)
+                    logger.info(f"产品向量查询完成 (二采价格)，结果行数: {len(product_result.get('rows', []))}")
+                    if product_result.get("rows") and len(product_result["rows"]) > 0:
+                        vector_results.append(("product", product_result))
+                        logger.info(f"产品向量查询成功 (二采价格)，添加到结果列表")
+                    else:
+                        logger.warning("产品向量查询返回空结果 (二采价格)")
+                except Exception as e:
+                    logger.warning(f"产品向量查询失败 (二采价格): {e}")
+
+                # 如果有向量查询结果，选择最好的一个返回
+                logger.info(f"向量查询统计 (二采价格): 成功查询数 {len(vector_results)}，详情: {[(name, len(result.get('rows', []))) for name, result in vector_results]}")
+
+                if vector_results:
+                    # 优先选择结果更多的查询，如果结果数量相同，选择第一个
+                    best_result = max(vector_results, key=lambda x: len(x[1]["rows"]))
+                    logger.info(f"向量查询成功 (二采价格): 选择 {best_result[0]} 向量查询，返回 {len(best_result[1]['rows'])} 条结果")
+                    return SQLQueryResponse(
+                        columns=best_result[1].get("columns", []),
+                        rows=best_result[1].get("rows", []),
+                        error=best_result[1].get("error")
+                    )
+
+                logger.warning("所有向量查询均无结果 (二采价格)，将退化到LIKE查询。可能原因: 1)向量数据不存在 2)相似度阈值过高 3)数据库中无匹配记录")
             except Exception as e:
-                logger.warning(f"产品向量查询失败: {e}")
+                logger.error(f"向量查询整体失败 (二采价格)，将退化到LIKE查询。异常信息: {str(e)}", exc_info=True)
+                # 继续执行LIKE查询，不抛出异常
 
-            # 如果有向量查询结果，选择最好的一个返回
-            if vector_results:
-                # 优先选择结果更多的查询，如果结果数量相同，选择第一个
-                best_result = max(vector_results, key=lambda x: len(x[1]["rows"]))
-                logger.info(f"使用 {best_result[0]} 向量查询，返回 {len(best_result[1]['rows'])} 条结果")
-                return SQLQueryResponse(
-                    columns=best_result[1].get("columns", []),
-                    rows=best_result[1].get("rows", []),
-                    error=best_result[1].get("error")
-                )
-
-        # 向量查询无结果或未提供向量，使用 LIKE 查询作为退化方案
+        # 向量查询无结果、失败或未提供向量，使用 LIKE 查询作为退化方案
+        if not request.embedding:
+            logger.info("未提供embedding参数 (二采价格)，直接使用LIKE查询")
+        else:
+            logger.info("向量查询无结果或失败 (二采价格)，开始执行LIKE查询作为退化方案")
         escaped_item = request.item_name.replace("'", "''")
 
         fallback_sql = f"""

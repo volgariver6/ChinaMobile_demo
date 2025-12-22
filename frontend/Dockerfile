@@ -37,6 +37,9 @@ COPY nginx.conf.template /etc/nginx/nginx.conf.template
 ENV BACKEND_HOST=backend
 ENV BACKEND_PORT=8000
 
+# Set API keys for runtime
+ENV VITE_SILICONFLOW_API_KEY=sk-vbejswkfqhmfkslsfluyhhrlamxdhtzonsundldhjfjecfxi
+
 # Substitute environment variables in nginx config
 RUN envsubst '${BACKEND_HOST} ${BACKEND_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 

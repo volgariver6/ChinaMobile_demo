@@ -163,6 +163,44 @@ REACT_APP_SILICONFLOW_API_KEY=your_siliconflow_api_key
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
+## 日志查看
+
+### 查看所有服务日志
+```bash
+# 查看所有服务的实时日志
+docker-compose -f deploy/docker-compose.yml logs -f
+
+# 查看所有服务的最新日志
+docker-compose -f deploy/docker-compose.yml logs
+```
+
+### 查看特定服务日志
+```bash
+# 后端日志
+docker-compose -f deploy/docker-compose.yml logs -f backend
+
+# 前端日志
+docker-compose -f deploy/docker-compose.yml logs -f frontend
+
+# 数据库日志
+docker-compose -f deploy/docker-compose.yml logs -f db
+```
+
+### 实时监控日志
+```bash
+# 实时查看所有日志
+docker-compose -f deploy/docker-compose.yml logs -f --tail=100
+
+# 只查看错误日志
+docker-compose -f deploy/docker-compose.yml logs 2>&1 | grep -i error
+```
+
+### 日志内容说明
+- `[API]` - 前端API调用日志
+- `[Embedding]` - 向量生成功能日志
+- `[INFO/ERROR]` - 后端应用日志
+- 包含请求参数、向量生成状态、查询结果等详细信息
+
 ## 9. 已知行为/约束
 - /conversations/sync 仅写入“最新一条”消息，避免历史被覆盖；历史读取依赖 GET /conversations/{id}/messages。
 - 深度思考字段 deep_thinking 前后端对齐：后端入库/返回，前端映射为 thinking 展示。

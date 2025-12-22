@@ -30,6 +30,13 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
       interval: 30s
@@ -48,6 +55,11 @@ services:
     environment:
       BACKEND_HOST: backend
       BACKEND_PORT: 8000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "5173:80"
 
