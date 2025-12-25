@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.services.moi_client import get_moi_client
+from src.services.matrixone_client import get_matrixone_client
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def run_sql(request: SQLQueryRequest) -> SQLQueryResponse:
     前端传入SQL语句，后端调用MOI API执行并返回结果
     """
     try:
-        client = get_moi_client()
+        client = get_matrixone_client()
         result = await client.run_sql(request.statement)
         
         return SQLQueryResponse(
@@ -77,7 +77,7 @@ ORDER BY `项目名称` DESC, `中标金额_万元` DESC
 LIMIT 20;
         """.strip()
         
-        client = get_moi_client()
+        client = get_matrixone_client()
         result = await client.run_sql(sql)
         
         return SQLQueryResponse(
@@ -133,7 +133,7 @@ ORDER BY
 LIMIT 10;
         """.strip()
         
-        client = get_moi_client()
+        client = get_matrixone_client()
         result = await client.run_sql(sql)
         
         return SQLQueryResponse(
@@ -174,7 +174,7 @@ WHERE `物料短描述` LIKE '%{escaped_item}%'
 LIMIT 10;
         """.strip()
         
-        client = get_moi_client()
+        client = get_matrixone_client()
         result = await client.run_sql(sql)
         
         return SQLQueryResponse(

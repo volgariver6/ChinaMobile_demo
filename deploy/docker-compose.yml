@@ -2,23 +2,19 @@ version: "3.9"
 
 services:
   db:
-    image: mysql:8.0
-    container_name: sca-mysql
+    image: matrixorigin/matrixone:3.0.4-hotfix-20251213
+    container_name: sca-matrixone
     environment:
-      MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_DATABASE: source_agent
-      MYSQL_USER: dump
-      MYSQL_PASSWORD: dump111
+      # 启用实验性向量索引功能
+      MO_ENABLE_EXPERIMENTAL_IVF_INDEX: "true"
     ports:
-      - "6006:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./script/init-sql.sql:/docker-entrypoint-initdb.d/init-sql.sql
+      - "6001:6001"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6001' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+
 
   backend:
     build:
@@ -29,7 +25,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "8001:8000"
 
   frontend:
     build:
@@ -39,6 +35,4 @@ services:
     ports:
       - "5173:80"
 
-volumes:
-  db_data:
 
