@@ -10,10 +10,11 @@ class Settings(BaseModel):
     APP_NAME: str = "Source Comparison Agent Backend"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
-    # 示例：mysql+asyncmy://user:password@localhost:3306/source_agent
+    # MatrixOne 数据库配置：租户模式
+    # 格式：mysql+asyncmy://account_name:admin_name:password@host:port/database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "mysql+asyncmy://dump:dump111@localhost:6006/source_agent",
+        "mysql+asyncmy://test_account%3Aadmin:test123@sca-matrixone:6001/xunyuan_agent",
     )
 
     # 通用大模型配置（默认按 OpenAI 兼容接口命名，可指向 DeepSeek 等）
