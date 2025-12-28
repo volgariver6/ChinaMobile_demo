@@ -1,0 +1,14 @@
+apiVersion: v2
+name: china-mobile-app
+description: 中国移动智能寻源比价助手 Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - sourcing
+  - procurement
+  - matrixone
+maintainers:
+  - name: China Mobile Team
+

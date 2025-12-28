@@ -1,0 +1,19 @@
+应用已部署！
+
+访问应用:
+  1. 获取 NodePort 端口:
+     kubectl get svc {{ include "china-mobile-demo.fullname" . }}-frontend -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}'
+
+  2. 获取节点 IP:
+     kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+
+  3. 访问地址: http://<节点IP>:<NodePort>
+
+查看状态:
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl get svc -n {{ .Release.Namespace }}
+
+查看日志:
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=backend
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=frontend
+

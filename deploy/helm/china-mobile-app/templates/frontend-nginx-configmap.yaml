@@ -1,0 +1,128 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "china-mobile-demo.fullname" . }}-frontend-nginx
+  labels:
+    {{- include "china-mobile-demo.frontend.labels" . | nindent 4 }}
+data:
+  generate-config.sh: |
+    #!/bin/sh
+    # 生成 config.js 文件
+    cat > /usr/share/nginx/html/config.js <<EOF
+    window.APP_CONFIG = {
+      VITE_SILICONFLOW_BASE_URL: '${VITE_SILICONFLOW_BASE_URL:-}',
+      VITE_SILICONFLOW_API_KEY: '${VITE_SILICONFLOW_API_KEY:-}',
+      VITE_API_BASE_URL: '${VITE_API_BASE_URL:-}',
+    };
+    EOF
+    echo "Generated config.js with environment variables"
+    # 启动 nginx
+    exec nginx -g "daemon off;"
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        # 定义backend upstream
+        upstream backend_upstream {
+            server {{ include "china-mobile-demo.fullname" . }}-backend:{{ .Values.backend.service.port }};
+        }
+
+        server {
+            listen 80;
+            server_name localhost;
+
+            root /usr/share/nginx/html;
+            index index.html;
+
+            # Enable gzip compression
+            gzip on;
+            gzip_vary on;
+            gzip_min_length 1024;
+            gzip_proxied any;
+            gzip_comp_level 6;
+            gzip_types
+                text/plain
+                text/css
+                text/xml
+                text/javascript
+                application/javascript
+                application/xml+rss
+                application/json;
+
+            # Handle client routing, return all requests to index.html
+            location / {
+                try_files $uri $uri/ /index.html;
+            }
+
+            # Proxy backend API requests
+            location /api/ {
+                proxy_pass http://backend_upstream/api/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+
+                # CORS headers
+                add_header 'Access-Control-Allow-Origin' '*' always;
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+                add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+
+                # Handle preflight requests
+                if ($request_method = 'OPTIONS') {
+                    return 204;
+                }
+            }
+
+            # Proxy MOI database requests
+            location /moi-api/ {
+                {{- $moiUrl := .Values.backend.env.MOI_BASE_URL }}
+                {{- $moiHost := $moiUrl | replace "https://" "" | replace "http://" "" }}
+                proxy_pass {{ $moiUrl }}/;
+                proxy_set_header Host {{ $moiHost }};
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+
+                proxy_set_header Authorization $http_authorization;
+                {{- if .Values.secrets.data.moiApiKey }}
+                proxy_set_header moi-key $http_moi_key;
+                {{- end }}
+                proxy_set_header X-API-Key $http_x_api_key;
+
+                # CORS headers
+                add_header 'Access-Control-Allow-Origin' '*' always;
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+                {{- if .Values.secrets.data.moiApiKey }}
+                add_header 'Access-Control-Allow-Headers' 'Content-Type, moi-key' always;
+                {{- else }}
+                add_header 'Access-Control-Allow-Headers' 'Content-Type' always;
+                {{- end }}
+
+                # Handle preflight requests
+                if ($request_method = 'OPTIONS') {
+                    return 204;
+                }
+            }
+
+            # Cache static assets
+            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+                expires 1y;
+                add_header Cache-Control "public, immutable";
+            }
+
+            # Security headers
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "no-referrer-when-downgrade" always;
+            add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+        }
+    }
+{{- end }}
+

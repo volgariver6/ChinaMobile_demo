@@ -1,0 +1,72 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "china-mobile-demo.fullname" . }}-frontend
+  labels:
+    {{- include "china-mobile-demo.frontend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "china-mobile-demo.frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- $secretContent := include (print $.Template.BasePath "/secret.yaml") . }}
+      {{- if $secretContent }}
+      annotations:
+        checksum/secret: {{ $secretContent | sha256sum }}
+      {{- end }}
+      labels:
+        {{- include "china-mobile-demo.frontend.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: frontend
+        image: "{{ include "china-mobile-demo.frontend.image" . }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        {{- if .Values.secrets.data.viteSiliconflowApiKey }}
+        - name: VITE_SILICONFLOW_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "china-mobile-demo.fullname" . }}-secret
+              key: viteSiliconflowApiKey
+        {{- end }}
+        {{- range $key, $value := .Values.frontend.runtimeEnv }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        command: ["/bin/sh"]
+        args: ["/scripts/generate-config.sh"]
+        livenessProbe:
+          {{- toYaml .Values.frontend.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.frontend.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+        - name: generate-script
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: {{ include "china-mobile-demo.fullname" . }}-frontend-nginx
+      - name: generate-script
+        configMap:
+          name: {{ include "china-mobile-demo.fullname" . }}-frontend-nginx
+          defaultMode: 0755
+{{- end }}
+

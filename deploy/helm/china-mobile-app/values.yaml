@@ -1,0 +1,161 @@
+# 全局配置
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+  # 全局命名配置
+  nameOverride: ""
+  fullnameOverride: ""
+
+  # 全局副本数配置（可被组件覆盖）
+  replicaCount: 1
+
+  # 全局镜像拉取策略
+  imagePullPolicy: IfNotPresent
+
+  # 全局资源配置（可被组件覆盖）
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # 全局标签
+  labels: {}
+
+  # 全局注解
+  annotations: {}
+
+  # 全局节点选择器
+  nodeSelector: {}
+
+  # 全局容忍度
+  tolerations: []
+
+  # 全局亲和性
+  affinity: {}
+
+  # 环境标识
+  environment: "development"  # development, staging, production
+
+# 后端配置
+backend:
+  enabled: true
+  image:
+    repository: china-mobile-demo-backend
+    tag: "latest"
+    pullPolicy: ""  # 留空则使用全局配置
+
+  replicaCount: ""  # 留空则使用全局配置
+
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+
+  resources: {}  # 留空则使用全局配置
+
+  env:
+    # 数据库配置（MatrixOne 在外部部署，需要配置正确的服务地址）
+    DATABASE_URL: "mysql+asyncmy://test_account%3Aadmin:test123@matrixone-service:6001/xunyuan_agent"
+
+    # LLM配置
+    LLM_BASE_URL: "https://api.openai.com/v1"
+    LLM_DEFAULT_MODEL: "qwen-turbo"
+    LLM_MAX_TOKENS: "4096"
+    LLM_TEMPERATURE: "0.7"
+    LLM_STREAM: "true"
+
+    # 外部搜索配置
+    WEB_SEARCH_API_URL: "https://api.bocha.cn/v1/web-search"
+
+    # MOI数据库配置
+    MOI_BASE_URL: "https://freetier-01.cn-hangzhou.cluster.matrixonecloud.cn"
+
+    # 应用配置
+    APP_NAME: "Source Comparison Agent Backend"
+    DEBUG: "false"
+    PORT: "8000"
+    CORS_ORIGINS: "*"
+
+  # 健康检查
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# 前端配置
+frontend:
+  enabled: true
+  image:
+    repository: china-mobile-demo-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  service:
+    type: NodePort
+    port: 80
+    targetPort: 80
+    nodePort: null
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # 前端运行时环境变量（用于生成 config.js）
+  # 这些变量会在容器启动时写入到 /usr/share/nginx/html/config.js
+  runtimeEnv:
+    # VITE_SILICONFLOW_BASE_URL: "https://api.siliconflow.cn/v1"
+    # VITE_API_BASE_URL: "http://localhost:8000"
+    # VITE_SILICONFLOW_API_KEY 通过 secrets.data.viteSiliconflowApiKey 配置
+
+  # 健康检查
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Secret配置（敏感信息，直接填写明文，Kubernetes会自动编码，留空则使用代码默认值）
+secrets:
+  data:
+    llmApiKey: ""
+    webSearchApiKey: ""
+    moiApiKey: ""
+    viteSiliconflowApiKey: ""
+
+
+
