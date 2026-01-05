@@ -14,6 +14,8 @@ data:
       VITE_SILICONFLOW_BASE_URL: '${VITE_SILICONFLOW_BASE_URL:-}',
       VITE_SILICONFLOW_API_KEY: '${VITE_SILICONFLOW_API_KEY:-}',
       VITE_API_BASE_URL: '${VITE_API_BASE_URL:-}',
+      // 不要加引号，是数组类型
+      AVAILABLE_MODELS: ${AVAILABLE_MODELS},
     };
     EOF
     echo "Generated config.js with environment variables"
@@ -108,6 +110,13 @@ data:
                 if ($request_method = 'OPTIONS') {
                     return 204;
                 }
+            }
+
+            location /ai/ {
+            #  TODO: 沿用后端配置的 AI_BASE_URL, AI_BASE_IP
+                proxy_pass {{ .Values.backend.env.AI_BASE_IP }};
+                rewrite ^/ai/(.*)$ /$1 break;
+                proxy_set_header Host {{ .Values.backend.env.AI_BASE_URL | replace "https://" "" | replace "http://" "" }};
             }
 
             # Cache static assets
