@@ -67,6 +67,7 @@ backend:
     LLM_MAX_TOKENS: "4096"
     LLM_TEMPERATURE: "0.7"
     LLM_STREAM: "true"
+    AI_BASE_IP: "https://172.21.71.200"
 
     # 外部搜索配置
     WEB_SEARCH_API_URL: "https://api.bocha.cn/v1/web-search"
@@ -129,6 +130,7 @@ frontend:
     # VITE_SILICONFLOW_BASE_URL: "https://api.siliconflow.cn/v1"
     # VITE_API_BASE_URL: "http://localhost:8000"
     # VITE_SILICONFLOW_API_KEY 通过 secrets.data.viteSiliconflowApiKey 配置
+    # AVAILABLE_MODELS: "[ { "id": "DeepSeek-V3.1", "name": "DeepSeek-V3", "description": "通用对话模型，性能均衡", "provider": "DeepSeek" } ]"
 
   # 健康检查
   livenessProbe:

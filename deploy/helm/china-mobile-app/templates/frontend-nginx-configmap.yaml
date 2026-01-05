@@ -116,7 +116,7 @@ data:
             #  TODO: 沿用后端配置的 AI_BASE_URL, AI_BASE_IP
                 proxy_pass {{ .Values.backend.env.AI_BASE_IP }};
                 rewrite ^/ai/(.*)$ /$1 break;
-                proxy_set_header Host {{ .Values.backend.env.AI_BASE_URL | replace "https://" "" | replace "http://" "" }};
+                proxy_set_header Host {{ .Values.backend.env.LLM_BASE_URL | replace "https://" "" | replace "http://" "" }};
             }
 
             # Cache static assets
